@@ -50,6 +50,67 @@ local function restoreBackpackOrder()
     end
 end
 
+-- ESP de players
+local espEnabled = false
+local espBoxes = {}
+
+local function createESP()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and not espBoxes[player] then
+            local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+            local head = player.Character:FindFirstChild("Head")
+            if hrp and head then
+                -- Box roxa maior e mais visível
+                local box = Instance.new("BoxHandleAdornment")
+                box.Adornee = hrp
+                box.AlwaysOnTop = true
+                box.ZIndex = 10
+                box.Size = Vector3.new(4,6,2)
+                box.Color3 = Color3.fromRGB(128,0,128)
+                box.Transparency = 0.5
+                box.Parent = workspace
+
+                -- Nome roxo maior (DisplayName)
+                local billboard = Instance.new("BillboardGui")
+                billboard.Adornee = head
+                billboard.Size = UDim2.new(0,200,0,50)
+                billboard.StudsOffset = Vector3.new(0,2,0)
+                billboard.AlwaysOnTop = true
+                billboard.Name = "ESPLabel"
+                local label = Instance.new("TextLabel", billboard)
+                label.Size = UDim2.new(1,0,1,0)
+                label.BackgroundTransparency = 1
+                label.TextColor3 = Color3.fromRGB(128,0,128)
+                label.TextScaled = false
+                label.Font = Enum.Font.ArialBold
+                label.TextSize = 30
+                label.Text = player.DisplayName
+                label.TextStrokeTransparency = 0.5
+                label.Parent = billboard
+                billboard.Parent = player:FindFirstChild("PlayerGui") or PlayerGui
+
+                espBoxes[player] = {box=box, label=billboard}
+            end
+        end
+    end
+end
+
+local function removeESP()
+    for player, data in pairs(espBoxes) do
+        if data.box then data.box:Destroy() end
+        if data.label then data.label:Destroy() end
+    end
+    espBoxes = {}
+end
+
+RunService.RenderStepped:Connect(function()
+    if espEnabled then
+        createESP()
+    else
+        removeESP()
+    end
+end)
+
 -- Cria GUI do Hub
 local function createHub()
     local screenGui = Instance.new("ScreenGui")
@@ -109,7 +170,20 @@ local function createHub()
     title.TextColor3 = Color3.fromRGB(255,255,255)
     title.TextScaled = true
 
-    -- Botão LIGADO/DESLIGADO azul naval
+    -- Botão ESP azul
+    local espButton = Instance.new("TextButton", frame)
+    espButton.Size = UDim2.new(1,-40,0,40)
+    espButton.Position = UDim2.new(0,20,0,150)
+    espButton.BackgroundColor3 = Color3.fromRGB(0,0,128)
+    espButton.TextColor3 = Color3.fromRGB(255,255,255)
+    espButton.TextScaled = true
+    espButton.Text = "ESP DESLIGADO"
+    espButton.MouseButton1Click:Connect(function()
+        espEnabled = not espEnabled
+        espButton.Text = espEnabled and "ESP LIGADO" or "ESP DESLIGADO"
+    end)
+
+    -- Botão LIGADO/DESLIGADO azul naval (pulo)
     local toggleButton = Instance.new("TextButton", frame)
     toggleButton.Size = UDim2.new(1,-40,0,40)
     toggleButton.Position = UDim2.new(0,20,0,200)
