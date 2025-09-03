@@ -18,7 +18,7 @@ local function simulateJump(times)
     end
 end
 UserInputService.JumpRequest:Connect(function()
-    if jumpsEnabled then simulateJump(3) end
+    if jumpsEnabled then simulateJump(5) end
 end)
 
 -- Backpack order
