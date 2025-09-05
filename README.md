@@ -1,13 +1,12 @@
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
 -- Jump
 local jumpsEnabled = true
 local jumpPower = 50
-local itemOrder = {}
 local function simulateJump(times)
     local c = LocalPlayer.Character
     local r = c and c:FindFirstChild("HumanoidRootPart")
@@ -22,6 +21,7 @@ UserInputService.JumpRequest:Connect(function()
 end)
 
 -- Backpack order
+local itemOrder = {}
 local function saveBackpackOrder()
     local b = LocalPlayer:FindFirstChild("Backpack")
     if not b then return end
@@ -81,54 +81,70 @@ local function removeESP(p)
 end
 Players.PlayerRemoving:Connect(removeESP)
 
--- Anti-Ragdoll
+-- Anti-Ragdoll revisado
 local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local hum = char:WaitForChild("Humanoid")
 local hrp = char:WaitForChild("HumanoidRootPart")
 local antiRagdollEnabled = false
-local lastVel = hrp.Velocity
-local impactThreshold = 60
 local arConnection
+
 local function removeForces()
     for _, o in pairs(hrp:GetChildren()) do
-        if o:IsA("BodyVelocity") or o:IsA("VectorForce") or o:IsA("BodyThrust") or o:IsA("BodyForce") then o:Destroy() end
+        if o:IsA("BodyVelocity") or o:IsA("VectorForce") or o:IsA("BodyThrust") or o:IsA("BodyForce") then
+            o:Destroy()
+        end
     end
 end
+
 local function fixMotor6D()
     for _, v in pairs(char:GetDescendants()) do
         if v:IsA("Motor6D") then v.Enabled = true end
     end
 end
+
 local function AntiRagdoll()
-    if hum:GetState()==Enum.HumanoidStateType.Physics or hum.PlatformStand then
+    if hum:GetState() == Enum.HumanoidStateType.Physics or hum.PlatformStand then
         hum:ChangeState(Enum.HumanoidStateType.GettingUp)
-        hum.PlatformStand=false
+        hum.PlatformStand = false
     end
-    for _,v in pairs(char:GetDescendants()) do
-        if v:IsA("BallSocketConstraint") or v:IsA("HingeConstraint") then v:Destroy() end
-    end
+
     fixMotor6D()
-    local velDelta=(hrp.Velocity-lastVel).Magnitude
-    if velDelta>impactThreshold then hrp.RotVelocity=Vector3.new(0,0,0) end
-    lastVel=hrp.Velocity
     removeForces()
+
+    -- Zera velocidade vertical e rotação
+    local vel = hrp.Velocity
+    hrp.Velocity = Vector3.new(vel.X, 0, vel.Z)
+    hrp.RotVelocity = Vector3.new(0, 0, 0)
 end
+
 local function startAntiRagdoll()
     if arConnection then arConnection:Disconnect() end
     arConnection = RunService.Heartbeat:Connect(function()
-        if antiRagdollEnabled then AntiRagdoll() end
+        if antiRagdollEnabled then
+            AntiRagdoll()
+        end
     end)
 end
+
 local function stopAntiRagdoll()
-    if arConnection then arConnection:Disconnect() arConnection=nil end
+    if arConnection then
+        arConnection:Disconnect()
+        arConnection = nil
+    end
 end
+
 hrp.ChildAdded:Connect(function(c)
     if (c:IsA("BodyVelocity") or c:IsA("VectorForce") or c:IsA("BodyThrust") or c:IsA("BodyForce")) and antiRagdollEnabled then
         c:Destroy()
     end
 end)
 
--- Hub
+-- Plataforma
+local platformEnabled = false
+local platform = nil
+local hue = 0
+
+-- Hub GUI
 local function createHub()
     local sg = Instance.new("ScreenGui")
     sg.Name="YXS_HUB_GUI"
@@ -159,8 +175,8 @@ local function createHub()
     UserInputService.InputChanged:Connect(function(i) if i==dragInput and dragging then local delta=i.Position-dragStart ob.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+delta.X,startPos.Y.Scale,startPos.Y.Offset+delta.Y) end end)
 
     local f = Instance.new("Frame",sg)
-    f.Size=UDim2.new(0,200,0,250)
-    f.Position=UDim2.new(0.5,-100,0.5,-125)
+    f.Size=UDim2.new(0,200,0,300)
+    f.Position=UDim2.new(0.5,-100,0.5,-150)
     f.BackgroundColor3=Color3.fromRGB(128,0,128)
     f.BorderSizePixel=0
     f.Visible=false
@@ -174,9 +190,10 @@ local function createHub()
     title.TextColor3=Color3.fromRGB(255,255,255)
     title.TextScaled=true
 
+    -- Anti-Ragdoll Button
     local arButton = Instance.new("TextButton",f)
     arButton.Size=UDim2.new(1,-40,0,40)
-    arButton.Position=UDim2.new(0,20,0,100)
+    arButton.Position=UDim2.new(0,20,0,60)
     arButton.BackgroundColor3=Color3.fromRGB(0,0,128)
     arButton.TextColor3=Color3.fromRGB(255,255,255)
     arButton.TextScaled=true
@@ -185,18 +202,17 @@ local function createHub()
         antiRagdollEnabled = not antiRagdollEnabled
         if antiRagdollEnabled then
             arButton.Text="ANTI-RAGDOLL ON"
-            arButton.BackgroundColor3=Color3.fromRGB(0,0,128)
             startAntiRagdoll()
         else
             arButton.Text="ANTI-RAGDOLL OFF"
-            arButton.BackgroundColor3=Color3.fromRGB(0,0,128)
             stopAntiRagdoll()
         end
     end)
 
+    -- ESP Button
     local espButton = Instance.new("TextButton",f)
     espButton.Size=UDim2.new(1,-40,0,40)
-    espButton.Position=UDim2.new(0,20,0,150)
+    espButton.Position=UDim2.new(0,20,0,110)
     espButton.BackgroundColor3=Color3.fromRGB(0,0,128)
     espButton.TextColor3=Color3.fromRGB(255,255,255)
     espButton.TextScaled=true
@@ -206,9 +222,10 @@ local function createHub()
         espButton.Text = espEnabled and "ESP LIGADO" or "ESP DESLIGADO"
     end)
 
+    -- Jump Button
     local jumpButton = Instance.new("TextButton",f)
     jumpButton.Size=UDim2.new(1,-40,0,40)
-    jumpButton.Position=UDim2.new(0,20,0,200)
+    jumpButton.Position=UDim2.new(0,20,0,160)
     jumpButton.BackgroundColor3=Color3.fromRGB(0,0,128)
     jumpButton.TextColor3=Color3.fromRGB(255,255,255)
     jumpButton.TextScaled=true
@@ -218,19 +235,37 @@ local function createHub()
         jumpButton.Text=jumpsEnabled and "PULO LIGADO" or "PULO DESLIGADO"
     end)
 
-    local function openF()
-        f.Visible=true
-        f.Position=UDim2.new(0.5,-100,0.5,-125)
-    end
-    local function closeF()
-        f.Visible=false
-    end
-
-    ob.MouseButton1Click:Connect(function()
-        if f.Visible then closeF() else openF() end
+    -- Plataforma Button
+    local platformButton = Instance.new("TextButton", f)
+    platformButton.Size=UDim2.new(1,-40,0,40)
+    platformButton.Position=UDim2.new(0,20,0,210)
+    platformButton.BackgroundColor3=Color3.fromRGB(0,0,128)
+    platformButton.TextColor3=Color3.fromRGB(255,255,255)
+    platformButton.TextScaled=true
+    platformButton.Text = "PLATAFORMA OFF"
+    platformButton.MouseButton1Click:Connect(function()
+        platformEnabled = not platformEnabled
+        platformButton.Text = platformEnabled and "PLATAFORMA ON" or "PLATAFORMA OFF"
+        if platformEnabled and not platform then
+            platform = Instance.new("Part")
+            platform.Size = Vector3.new(6,0.5,6)
+            platform.Anchored = true
+            platform.CanCollide = true
+            platform.Material = Enum.Material.Neon
+            platform.Color = Color3.fromRGB(255,0,0)
+            platform.Parent = workspace
+        elseif not platformEnabled and platform then
+            platform:Destroy()
+            platform = nil
+        end
     end)
+
+    local function openF() f.Visible=true f.Position=UDim2.new(0.5,-100,0.5,-150) end
+    local function closeF() f.Visible=false end
+    ob.MouseButton1Click:Connect(function() if f.Visible then closeF() else openF() end end)
 end
 
+-- Inicialização
 if not PlayerGui:FindFirstChild("YXS_HUB_GUI") then createHub() end
 LocalPlayer.CharacterAdded:Connect(function()
     wait(1)
@@ -241,7 +276,9 @@ LocalPlayer.Backpack.ChildAdded:Connect(saveBackpackOrder)
 LocalPlayer.Backpack.ChildRemoved:Connect(saveBackpackOrder)
 saveBackpackOrder()
 
+-- Atualizações frame a frame
 RunService.RenderStepped:Connect(function()
+    -- ESP
     if espEnabled then
         for _, p in pairs(Players:GetPlayers()) do
             if p ~= LocalPlayer then
@@ -250,5 +287,24 @@ RunService.RenderStepped:Connect(function()
         end
     else
         for p,_ in pairs(espBoxes) do removeESP(p) end
+    end
+
+    -- Plataforma e queda lenta
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        local hrp = LocalPlayer.Character.HumanoidRootPart
+        local humanoid = LocalPlayer.Character.Humanoid
+
+        if platformEnabled and platform then
+            platform.Position = hrp.Position - Vector3.new(0,3,0)
+            hue = (hue + 1) % 360
+            platform.Color = Color3.fromHSV(hue/360,1,1)
+        end
+
+        if not humanoid.FloorMaterial then
+            local vel = hrp.Velocity
+            if vel.Y < -5 then
+                hrp.Velocity = Vector3.new(vel.X, -5, vel.Z)
+            end
+        end
     end
 end)
